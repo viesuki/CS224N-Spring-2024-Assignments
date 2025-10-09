@@ -1,0 +1,143 @@
+\titledquestion{Understanding word2vec}[15]
+Recall that the key insight behind {\tt word2vec} is that \textit{`a word is known by the company it keeps'}. Concretely, consider a `center' word $c$ surrounded before and after by a context of a certain length. We term words in this contextual window `outside words' ($O$). For example, in Figure~ \ref{fig:word2vec} , the context window length is 2, the center word $c$ is `banking', and the outside words are `turning', `into', `crises', and `as':
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.6\textwidth]{word2vec.png}
+    \caption{The word2vec skip-gram prediction model with window size 2}
+    \label{fig:word2vec}
+\end{figure}
+
+Skip-gram {\tt word2vec} aims to learn the probability distribution $P(O|C)$. 
+Specifically, given a specific word $o$ and a specific word $c$, we want to predict $P(O=o|C=c)$: the probability that word $o$ is an `outside' word for $c$ (i.e., that it falls within the contextual window of $c$).
+We model this probability by taking the softmax function over a series of vector dot-products: % I added the word "softmax" here because I bet a lot of students will have forgotten what softmax is and why the loss fn is called naive softmax. but if this is too wordy we can just take it out
+
+\begin{equation}
+ P(O=o \mid C=c) = \frac{\exp(\bu_{o}^\top \bv_c)}{\sum_{w \in \text{Vocab}} \exp(\bu_{w}^\top \bv_c)}
+ \label{word2vec_condprob}
+\end{equation}
+
+For each word, we learn vectors $u$ and $v$, where $\bu_o$ is the `outside' vector representing outside word $o$, and $\bv_c$ is the `center' vector representing center word $c$. 
+We store these parameters in two matrices, $\bU$ and $\bV$.
+The columns of $\bU$ are all the `outside' vectors $\bu_{w}$;
+the columns of $\bV$ are all of the `center' vectors $\bv_{w}$. 
+Both $\bU$ and $\bV$ contain a vector for every $w \in \text{Vocabulary}$.\footnote{Assume that every word in our vocabulary is matched to an integer number $k$. Bolded lowercase letters represent vectors. $\bu_{k}$ is both the $k^{th}$ column of $\bU$ and the `outside' word vector for the word indexed by $k$. $\bv_k$ is both the $k^{th}$ column of $\bV$ and the `center' word vector for the word indexed by $k$. \textbf{In order to simplify notation we shall interchangeably use $k$ to refer to word $k$ and the index of word $k$.}}\newline
+
+%We can think of the probability distribution $P(O|C)$ as a prediction function that we can approximate via supervised learning. For any training example, we will have a single $o$ and $c$. We will then compute a value $P(O=o|C=c)$ and report the loss. 
+Recall from lectures that, for a single pair of words $c$ and $o$, the loss is given by:
+
+\begin{equation} 
+\bJ_{\text{naive-softmax}}(\bv_c, o, \bU) = -\log P(O=o| C=c).
+\label{naive-softmax}
+\end{equation}
+
+We can view this loss as the cross-entropy\footnote{The \textbf{cross-entropy loss} between the true (discrete) probability distribution $p$ and another distribution $q$ is $-\sum_i p_i \log(q_i)$.} between the true distribution $\by$ and the predicted distribution $\hat{\by}$, for a particular center word c and a particular outside word o. 
+Here, both $\by$ and $\hat{\by}$ are vectors with length equal to the number of words in the vocabulary.
+Furthermore, the $k^{th}$ entry in these vectors indicates the conditional probability of the $k^{th}$ word being an `outside word' for the given $c$. 
+The true empirical distribution $\by$ is a one-hot vector with a 1 for the true outside word $o$, and 0 everywhere else, for this particular example of center word c and outside word o.\footnote{Note that the true conditional probability distribution of context words for the entire training dataset would not be one-hot.}
+The predicted distribution $\hat{\by}$ is the probability distribution $P(O|C=c)$ given by our model in equation (\ref{word2vec_condprob}). \newline
+
+\textbf{Note:} Throughout this homework, when computing derivatives, please use the method reviewed during the lecture (i.e. no Taylor Series Approximations).
+
+\clearpage
+\begin{parts}
+\part[2]
+Prove that the naive-softmax loss (Equation \ref{naive-softmax}) is the same as the cross-entropy loss between $\by$  and $\hat{\by}$, i.e. (note that $\by$ 
+ (true distribution), $\hat{\by}$ (predicted distribution) are vectors and $\hat{\by}_o$ is a scalar):
+
+\begin{equation} 
+-\sum_{w \in \text{Vocab}} \by_w \log(\hat{\by}_w) = - \log (\hat{\by}_o).
+\end{equation}
+
+Your answer should be one line. You may describe your answer in words.
+
+\ifans{\\
+Since $\by$ is a one-hot vector with a 1 for the true outside word $o$ and 0 everywhere else, the only term that remains in the summation is when $w=o$. Thus, we have:
+\[-\sum_{w \in \text{Vocab}} \by_w \log(\hat{\by}_w) = -1 * \log(\hat{\by}_{o}) - \sum_{w \ne o} 0 * \log(\hat{\by}_{w}) = -\log(\hat{\by}_o).\]
+}
+
+% Question 1-B
+\part[6]
+\begin{enumerate}[label=\roman*.]
+    \item 
+    Compute the partial derivative of $\bJ_{\text{naive-softmax}}(\bv_c, o, \bU)$ with respect to $\bv_c$. \emph{Please write your answer in terms of $\by$, $\hat{\by}$, $\bU$, and show your work to receive full credit}.
+    \begin{itemize} 
+        \item \textbf{Note}: Your final answers for the partial derivative should follow the shape convention: the partial derivative of any function $f(x)$ with respect to $x$ should have the \textbf{same shape} as $x$.\footnote{This allows us to efficiently minimize a function using gradient descent without worrying about reshaping or dimension mismatching. While following the shape convention, we're guaranteed that $\theta:= \theta - \alpha\frac{\partial J(\theta)}{\partial \theta}$ is a well-defined update rule.}
+        \item Please provide your answers for the partial derivative in vectorized form. For example, when we ask you to write your answers in terms of $\by$, $\hat{\by}$, and $\bU$, you may not refer to specific elements of these terms in your final answer (such as $\by_1$, $\by_2$, $\dots$). 
+    \end{itemize}
+    \item
+    When is the gradient you computed equal to zero? \\
+    \textbf{Hint:} You may wish to review and use some introductory linear algebra concepts.
+    \item
+    The center word matrix $bV$ will be updated in this form during training: 
+    $$
+    \bv_c := \bv_c - \alpha \frac{\partial \bJ_{\text{naive-softmax}}(\bv_c, o, \bU)}{\partial \bv_c}
+    $$
+    , where $\alpha$ is the learning rate.
+
+\end{enumerate}
+
+\ifans{
+\begin{enumerate}[label=\roman*.]
+    \item
+    \begin{align*}
+        \nabla _{v_c} \bJ_{\text{naive-softmax}}(\bv_c, o, \bU) &= - \nabla _{v_c} \log \frac{exp(\bu_o^{\top} \bv_c)}{\sum_{w \in \text{Vocab}} exp(\bu_w^{\top} \bv_c)} \\
+        &= - \nabla _{v_c} (\bu_o^{\top} \bv_c) + \nabla _{v_c} \log (\sum_{w \in \text{Vocab}} exp(\bu_w^{\top} \bv_c)) \\
+        &= - \bu_o + \frac{1}{\sum_{w \in \text{Vocab}} exp(\bu_w^{\top} \bv_c)} \sum_{x \in \text{Vocab}} exp(\bu_x^{\top} \bv_c) \bu_x \\
+        &= - \bu_o + \sum_{x \in \text{Vocab}} \frac{exp(\bu_x^{\top} \bv_c)}{\sum_{w \in \text{Vocab}} exp(\bu_w^{\top} \bv_c)} \bu_x \\
+        &= - \bu_o + \sum_{x \in \text{Vocab}} \hat{y}_x \bu_x \\
+        &= - \bU \by + \bU \hat{\by} \\
+        &= \bU (\hat{\by} - \by)
+    \end{align*}
+    \item
+    The gradient is equal to zero when $\hat{\by} - \by$ lies in the null space of $\bU$. Because $\bU \in \mathbb{R}^{d \times |V|}$, where $d$ is the dimension of the word vectors and $|V|$ is the size of the vocabulary, the null space of $\bU$ has dimension at least $|V| - d$. This means that there are no solutions to the equation $\hat{\by} - \by = 0$ as well.
+    \item
+    The center word matrix $V$ will be updated in this form during training: 
+    $$
+    \bv_c := \bv_c - \eta \bU (\hat{\by} - \by)
+    $$
+    where $\eta$ is the learning rate. This means there two directions in which $\bv_c$ will be updated. One is to subtract a weighted sum of all the outside word vectors $\bu_w$'s, where the weights are given by the predicted probabilities $\hat{y}_w$'s. The other is to add the outside word vector $\bu_o$ corresponding to the true outside word $o$. Intuitively, this means that we are trying to make the center word vector $\bv_c$ more similar to the true outside word vector $\bu_o$, while making it less similar to all other outside word vectors $\bu_w$'s.
+\end{enumerate}
+}
+
+
+% Question 1-C
+\part[1]
+In many downstream applications using word embeddings, L2 normalized vectors (e.g. $\mathbf{u}/||\mathbf{u}||_2$ where $||\mathbf{u}||_2 = \sqrt{\sum_i u_i^2}$) are used instead of their raw forms (e.g. $\mathbf{u}$). Let’s consider a hypothetical downstream task of binary classification of phrases as being positive or negative, where you decide the sign based on the sum of individual embeddings of the words. When would L2 normalization take away useful information for the downstream task? When would it not?
+
+\textbf{Hint:} Consider the case where $\mathbf{u}_x = \alpha\mathbf{u}_y$ for some words $x \neq y$ and some scalar $\alpha$. When $\alpha$ is positive, what will be the value of normalized  $\mathbf{u}_x$ and normalized $\mathbf{u}_y$? How might $\mathbf{u}_x$ and $\mathbf{u}_y$ be related for such a normalization to affect or not affect the resulting classification?
+
+\ifans{\\
+As described, for the binary classification task, the sum of individual embeddings of the words is used to decide the sign. If $\mathbf{u}_x = \alpha\mathbf{u}_y$ for some words $x \neq y$ and some positive scalar $\alpha$, then the normalized vectors will be equal: $\frac{\mathbf{u}_x}{||\mathbf{u}_x||_2} = \frac{\alpha\mathbf{u}_y}{||\alpha\mathbf{u}_y||_2} = \frac{\mathbf{u}_y}{||\mathbf{u}_y||_2}$. In this case, if the magnitude of the embeddings carries useful information for the classification task (e.g., if $\alpha$ indicates the strength or intensity of a sentiment), then L2 normalization would take away that useful information, as it would make both embeddings identical regardless of their original magnitudes.
+}
+
+% Question 1-D
+\part[5] 
+Compute the partial derivatives of $\bJ_{\text{naive-softmax}}(\bv_c, o, \bU)$ with respect to each of the `outside' word vectors, $\bu_w$'s. There will be two cases: when $w=o$, the true `outside' word vector, and $w \neq o$, for all other words. Please write your answer in terms of $\by$, $\hat{\by}$, and $\bv_c$. In this subpart, you may use specific elements within these terms as well (such as $\by_1$, $\by_2$, $\dots$). Note that $\bu_w$ is a vector while $\by_1, \by_2, \dots$ are scalars. Show your work to receive full credit.
+
+\ifans{
+    \begin{align*}
+        \nabla _{u_w} \bJ_{\text{naive-softmax}}(\bv_c, o, \bU) &= - \nabla _{u_w} \log \frac{exp(\bu_o^{\top} \bv_c)}{\sum_{x \in \text{Vocab}} exp(\bu_x^{\top} \bv_c)} \\
+        &= - \nabla _{u_w} (\bu_o^{\top} \bv_c) + \nabla _{u_w} \log (\sum_{x \in \text{Vocab}} exp(\bu_x^{\top} \bv_c)) \\
+        &= - \nabla _{u_w} (\bu_o^{\top} \bv_c) + \frac{1}{\sum_{x \in \text{Vocab}} exp(\bu_x^{\top} \bv_c)} \nabla _{u_w} (exp(\bu_w^{\top} \bv_c)) \\
+        &= - \nabla _{u_w} (\bu_o^{\top} \bv_c) + \frac{1}{\sum_{x \in \text{Vocab}} exp(\bu_x^{\top} \bv_c)} exp(\bu_w^{\top} \bv_c) \bv_c \\
+        &= - \nabla _{u_w} (\bu_o^{\top} \bv_c) + \hat{y}_w \bv_c \\
+        &= \left \{ \begin{matrix} (\hat{y}_w - 1) \bv_c & \text{if } w = o \\ \hat{y}_w \bv_c & \text{if } w \neq o \end{matrix} \right. 
+    \end{align*}
+}
+
+% Question 1-E
+\part[1]
+Write down the partial derivative of $\bJ_{\text{naive-softmax}}(\bv_c, o, \bU)$ with respect to $\bU$. Please break down your answer in terms of the column vectors $\frac{\partial \bJ(\bv_c, o, \bU)}{\partial \bu_1}$, $\frac{\partial \bJ(\bv_c, o, \bU)}{\partial \bu_2}$, $\cdots$, $\frac{\partial \bJ(\bv_c, o, \bU)}{\partial \bu_{|\text{Vocab}|}}$. No derivations are necessary, just an answer in the form of a matrix.
+
+\ifans{
+    \begin{align*} 
+        \nabla _{U} \bJ_{\text{naive-softmax}}(\bv_c, o, \bU) &= \begin{bmatrix}
+        \frac{\partial \bJ(\bv_c, o, \bU)}{\partial \bu_1} & \frac{\partial \bJ(\bv_c, o, \bU)}{\partial \bu_2} & \cdots & \frac{\partial \bJ(\bv_c, o, \bU)}{\partial \bu_{|\text{Vocab}|}} \end{bmatrix} \\
+        &= \begin{bmatrix}
+        \hat{y}_1 \bv_c & \hat{y}_2 \bv_c & \cdots & (\hat{y}_o - 1) \bv_c & \cdots & \hat{y}_{|\text{Vocab}|} \bv_c  \end{bmatrix} \\
+        &=  \bv_c (\hat{\by} - \by)^{\top} 
+    \end{align*}
+}
+
+\end{parts}
