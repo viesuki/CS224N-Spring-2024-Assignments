@@ -1,0 +1,230 @@
+\graphicspath{ {images/} }
+
+\titledquestion{Position Embeddings Exploration}[6]
+\label{sec:pos_enc}
+
+Position embeddings are an important component of the Transformer architecture, allowing the model to differentiate between tokens based on their position in the sequence.
+In this question, we'll explore the need for positional embeddings in Transformers and how they can be designed.
+
+Recall that the crucial components of the Transformer architecture are the self-attention layer and the feed-forward neural network layer. 
+Given an input tensor $\mathbf{X} \in \mathbb{R}^{T \times d}$, where $T$ is the sequence length and $d$ is the hidden dimension, the self-attention layer computes the following:
+\begin{align*}
+    \mathbf{Q} &= \mathbf{X}\mathbf{W}_Q, \quad \mathbf{K} = \mathbf{X}\mathbf{W}_K, \quad \mathbf{V} = \mathbf{X}\mathbf{W}_V \\
+    \mathbf{H} &= \text{softmax}\left(\frac{\mathbf{Q}\mathbf{K}^{\top}}{\sqrt{d}}\right) \mathbf{V}
+\end{align*}
+where $\mathbf{W}_Q, \mathbf{W}_K, \mathbf{W}_V \in \mathbb{R}^{d \times d}$ are weight matrices, and $\mathbf{H} \in \mathbb{R}^{T \times d}$ is the output.
+
+Next, the feed-forward layer applies the following transformation:
+\begin{align*}
+    \mathbf{Z} = \text{ReLU}(\mathbf{H}\mathbf{W}_1 + \mathbf{1}\cdot\mathbf{b}_1)\mathbf{W}_2 + \mathbf{1}\cdot\mathbf{b}_2
+\end{align*}
+where $\mathbf{W}_1, \mathbf{W}_2 \in \mathbb{R}^{d \times d}$ and $\mathbf{b}_1, \mathbf{b}_2 \in \mathbb{R}^{1\times d}$ are weights and biases; $\mathbf{1} \in \mathbb{R}^{T\times 1}$ is a vector of ones\footnote{Outer product with $\mathbf{1}$ represents broadcasting operation and makes feed forward network notations mathematically sound.}; and $\mathbf{Z} \in \mathbb{R}^{T \times d}$ is the final output.
+
+(Note that we have omitted some details of the Transformer architecture for simplicity.)
+
+\begin{parts}
+    \part[4] \textbf{Permuting the input.}
+    
+    \begin{subparts}
+        \subpart[3]
+        Suppose we permute the input sequence $\mathbf{X}$ such that the tokens are shuffled randomly. This can be represented as multiplication by a permutation matrix $\mathbf{P} \in \mathbb{R}^{T \times T}$, i.e. $\mathbf{X}_{\text{perm}} = \mathbf{P}\mathbf{X}$. (See \href{https://en.wikipedia.org/wiki/Permutation_matrix}{Wikipedia} for a recap on permutation matrices.)
+
+        \textbf{Show} that the output $\mathbf{Z}_{\text{perm}}$ for the permuted input $\mathbf{X}_{\text{perm}}$ will be $\mathbf{Z}_{\text{perm}} = \mathbf{P}\mathbf{Z}$.
+
+        You are given that for any permutation matrix $\mathbf{P}$ and any matrix $\mathbf{A}$, the following hold:
+        $\text{softmax}(\mathbf{P}\mathbf{A}\mathbf{P}^{\top}) = \mathbf{P}\ \text{softmax}(\mathbf{A})\ \mathbf{P}^{\top} \quad \text{and}\quad \text{ReLU}(\mathbf{P}\mathbf{A}) = \mathbf{P}\ \text{ReLU}(\mathbf{A})$.
+
+        \ifans{
+        \begin{align*}
+            \mathbf{H}_{\text{perm}} &= \text{softmax}\left(\frac{\mathbf{Q}_{\text{perm}}\mathbf{K}_{\text{perm}}^{\top}}{\sqrt{d}}\right) \mathbf{V}_{\text{perm}} \\
+            &= \text{softmax}\left(\frac{(\mathbf{P}\mathbf{X}\mathbf{W}_Q)(\mathbf{P}\mathbf{X}\mathbf{W}_K)^{\top}}{\sqrt{d}}\right) (\mathbf{P}\mathbf{X}\mathbf{W}_V) \\
+            &= \text{softmax}\left(\frac{\mathbf{P}\mathbf{X}\mathbf{W}_Q\mathbf{W}_K^{\top}\mathbf{X}^{\top}\mathbf{P}^{\top}}{\sqrt{d}}\right) (\mathbf{P}\mathbf{X}\mathbf{W}_V) \\
+            &= \mathbf{P}\ \text{softmax}\left(\frac{\mathbf{X}\mathbf{W}_Q\mathbf{W}_K^{\top}\mathbf{X}^{\top}}{\sqrt{d}}\right) \mathbf{P}^{\top} (\mathbf{P}\mathbf{X}\mathbf{W}_V) \\
+            &= \mathbf{P}\ \text{softmax}\left(\frac{\mathbf{X}\mathbf{W}_Q\mathbf{W}_K^{\top}\mathbf{X}^{\top}}{\sqrt{d}}\right) \mathbf{X}\mathbf{W}_V \\
+            &= \mathbf{P}\mathbf{H}
+        \end{align*}
+            Now, we can compute $\mathbf{Z}_{\text{perm}}$:
+        \begin{align*}
+            \mathbf{Z}_{\text{perm}} &= \text{ReLU}(\mathbf{H}_{\text{perm}}\mathbf{W}_1 + \mathbf{P}\cdot\mathbf{b}_1)\mathbf{W}_2 + \mathbf{P}\cdot\mathbf{b}_2 \\
+            &= \text{ReLU}(\mathbf{P}\mathbf{H}\mathbf{W}_1 + \mathbf{P}\cdot\mathbf{b}_1)\mathbf{W}_2 + \mathbf{P}\cdot\mathbf{b}_2
+        \end{align*}
+            Using the property of ReLU with permutation matrices, we have:
+            \begin{align*}
+            \mathbf{Z}_{\text{perm}} &= \mathbf{P}\ (\text{ReLU}(\mathbf{H}\mathbf{W}_1 + \mathbf{1}\cdot\mathbf{b}_1)\mathbf{W}_2 + \mathbf{b}_2) \\
+            &= \mathbf{P}\mathbf{Z}
+        \end{align*}
+        }
+
+        \subpart[1] Think about the implications of the result you derived in part i. \textbf{Explain} why this property of the Transformer model could be problematic when processing text.
+
+        \ifans{\\
+        The result from part (i) shows that permuting the input sequence results in a corresponding permutation of the output sequence. This means that the Transformer model is invariant to the order of the input tokens. In the context of natural language processing, this is problematic because the meaning of a sentence often depends on the order of the words. For example, "The cat sat on the mat" has a different meaning than "On the mat sat the cat". If the model cannot distinguish between these two sequences due to its permutation invariance, it may fail to capture important syntactic and semantic information necessary for understanding and generating coherent text.
+        }
+    \end{subparts}
+
+    \part[2] \textbf{Position embeddings} are vectors that encode the position of each token in the sequence. They are added to the input word embeddings before feeding them into the Transformer.
+
+    One approach is to generate position embedding using a fixed function of the position and the dimension of the embedding. If the input word embeddings are $\mathbf{X} \in \mathbb{R}^{T \times d}$, the position embeddings $\Phi \in \mathbb{R}^{T \times d}$ are generated as follows:
+    \begin{align*}
+        \Phi_{(t, 2i)} &= \sin\left({t}/{10000^{2i/d}}\right) \\
+        \Phi_{(t, 2i+1)} &= \cos\left({t}/{10000^{2i/d}}\right)
+    \end{align*}
+    where $t \in \{0, 1, \ldots T-1\}$ and $i \in \{0, 1, \ldots d/2-1\}$\footnote{Here $d$ is assumed even which is typically the case for most models.}.
+
+    Specifically, the position embeddings are added to the input word embeddings:
+    \begin{align*}
+        \mathbf{X}_{\text{pos}} = \mathbf{X} + \Phi
+    \end{align*}
+
+    \begin{subparts}
+        \subpart[1] Do you think the position embeddings will help the issue you identified in part (a)? If yes, explain how and if not, explain why not.
+
+        \ifans{\\
+        Yes, position embeddings help address the issue of permutation invariance identified in part (a). By adding unique position embeddings to each token based on its position in the sequence, the model can differentiate between tokens that are identical in content but located at different positions. This allows the Transformer to capture the order of tokens, as the combined input embeddings now contain information about both the token identity and its position. Consequently, the model can learn to recognize patterns and relationships that depend on the sequence order, which is crucial for understanding natural language.
+        }
+        \subpart[1] Can the position embeddings for two different tokens in the input sequence be the same? If yes, provide an example. If not, explain why not.
+
+        \ifans{\\
+        For a very large base $d$, it is theoretically possible for the position embeddings of two different tokens to be the same, but this is highly unlikely in practice. The position embeddings are generated using sine and cosine functions with varying frequencies, which means that even small differences in position will typically result in different embeddings. However, due to the periodic nature of the sine and cosine functions, there may be some rare cases where two different positions produce the same embedding, especially if the base $d$ is very large and the positions are carefully chosen. In general, though, the position embeddings will be unique for each token in the sequence.
+        }
+
+\includegraphics[width=0.95\linewidth]{images/Sinusoidal.png}
+
+    \end{subparts}
+\end{parts}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

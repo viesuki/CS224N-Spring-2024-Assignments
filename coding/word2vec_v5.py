@@ -508,6 +508,12 @@ print(f'训练完成，总耗时: {etime - stime:.2f} 秒； \n 平均耗时: {(
 cbow_trainer.save_model('cbow.pt')
 
 # %%
+# 加载模型测试
+skipgram_trainer = Word2VecTrainer.load_model('skipgram.pt', device='cpu')
+cbow_trainer = Word2VecTrainer.load_model('cbow.pt', device='cpu')
+
+
+# %%
 len(skipgram_trainer.word2idx), len(skipgram_trainer.word_freq)
 
 # %%
